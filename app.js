@@ -357,7 +357,12 @@ function createBox(label, arrows, isHybrid = false, badgeType = "") {
 
   return container;
 }
+// Period 2 elements CANNOT expand their octet (Steric Number cannot exceed 4)
+const PERIOD_2_ELEMENTS = ["BE", "B", "C", "N", "O", "F"];
 
+if (PERIOD_2_ELEMENTS.includes(normCentral.toUpperCase()) && stericNumber > 4) {
+  throw new Error(`${normCentral} is a Period 2 element and cannot expand its octet beyond 4 bonds (no d-orbitals).`);
+}
 function createBox(label, arrows, isHybrid = false) {
   const container = document.createElement("div");
   container.className = "flex flex-col items-center gap-1";
