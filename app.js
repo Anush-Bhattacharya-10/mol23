@@ -10,9 +10,69 @@ let isVibrating = false;
 let vibrationInterval = null;
 
 // Periodic Table Valence Data
+// Full Valence Electrons Map for Main Group Elements
 const VALENCE_ELECTRONS = {
-    H: 1, F: 7, CL: 7, BR: 7, I: 7, O: 6, S: 6, SE: 6, N: 5, P: 5, AS: 5, C: 4, SI: 4, B: 3, XE: 8, KR: 8
+    H: 1, Li: 1, Na: 1, K: 1,
+    Be: 2, Mg: 2, Ca: 2,
+    B: 3, Al: 3, Ga: 3,
+    C: 4, Si: 4, Ge: 4,
+    N: 5, P: 5, As: 5, Sb: 5,
+    O: 6, S: 6, Se: 6, Te: 6,
+    F: 7, Cl: 7, Br: 7, I: 7,
+    He: 8, Ne: 8, Ar: 8, Kr: 8, Xe: 8, Rn: 8
 };
+
+function parseFormula(input) {
+    // Clean string: remove spaces, brackets, charges
+    let clean = input.trim();
+
+    // Handle charges if present, e.g., [NH4]+ or SO4(2-)
+    let netCharge = 0;
+    if (clean.includes("+")) netCharge = 1;
+    if (clean.includes("-")) netCharge = -1;
+    clean = clean.replace(/[^A-Za-z0-9]/g, "");
+
+    // Match all chemical tokens: Element symbol + optional count
+    const tokenRegex = /([A-Z][a-z]?)(\d*)/g;
+    const tokens = [];
+    let match;
+
+    while ((match = tokenRegex.exec(clean)) !== null) {
+        if (match[1]) {
+            tokens.push({
+                element: match[1],
+                count: match[2] ? parseInt(match[2], 10) : 1
+            });
+        }
+    }
+
+    if (tokens.length === 0) {
+        throw new Error("Invalid formula");
+    }
+
+    // Single atom input (e.g., "Xe" or "O")
+    if (tokens.length === 1) {
+        return { central: tokens[0].element, ligand: "H", count: 0, netCharge };
+    }
+
+    // For multi-atom molecules:
+    // Central atom is usually the FIRST element (e.g. SF6 -> S, PCl5 -> P, XeF4 -> Xe)
+    // Exception: In hydrogen-first formulas like H2O or H2S, the second element is central.
+    let centralIndex = 0;
+    if (tokens[0].element === "H" && tokens.length > 1) {
+        centralIndex = 1;
+    }
+
+    const centralToken = tokens[centralIndex];
+    const ligandToken = tokens[centralIndex === 0 ? 1 : 0];
+
+    return {
+        central: centralToken.element,
+        ligand: ligandToken.element,
+        count: ligandToken.count,
+        netCharge
+    };
+}
 
 document.addEventListener("DOMContentLoaded", () => {
     const element = document.getElementById("viewer");
@@ -74,9 +134,17 @@ async function handleSearch() {
     if (query) await processMolecule(query);
 }
 
-// Universal Chemical Formula Parser & VSEPR Solver
 function processMolecule(formulaStr) {
     showLoader(true);
+
+    // Clear any existing vibration loop
+    if (vibrationInterval) {
+        clearInterval(vibrationInterval);
+        isVibrating = false;
+        document.getElementById("vibrationStatus").textContent = "OFF";
+        document.getElementById("vibrationStatus").className = "px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400";
+    }
+
     try {
         const parsed = parseFormula(formulaStr);
         const vsepr = solveVSEPR(parsed.central, parsed.ligand, parsed.count);
@@ -97,68 +165,53 @@ function processMolecule(formulaStr) {
     }
 }
 
-function parseFormula(input) {
-    const regex = /([A-Z][a-z]?)(?:([A-Z][a-z]?))?(\d*)?/;
-    const clean = input.toUpperCase().replace(/[^A-Z0-9]/g, "");
+function solveVSEPR(central, ligand, count, netCharge = 0) {
+    // Normalize element symbol casing (e.g., "cl" -> "Cl")
+    const normCentral = central.charAt(0).toUpperCase() + central.slice(1).toLowerCase();
+    const normLigand = ligand.charAt(0).toUpperCase() + ligand.slice(1).toLowerCase();
 
-    // Basic Regex match for Central + Ligand + Count
-    const matches = clean.match(/^([A-Z][a-z]?)([A-Z][a-z]?)(\d*)$/);
-    if (!matches) {
-        if (clean === "CH4") return { central: "C", ligand: "H", count: 4 };
-        if (clean === "NH3") return { central: "N", ligand: "H", count: 3 };
-        if (clean === "H2O") return { central: "O", ligand: "H", count: 2 };
-        return { central: "S", ligand: "F", count: 6 }; // Default fallback
-    }
+    const vValence = VALENCE_ELECTRONS[normCentral] || 6;
 
-    const central = matches[1];
-    const ligand = matches[2] || "H";
-    const count = parseInt(matches[3] || "1", 10);
-    return { central, ligand, count };
-}
-
-function solveVSEPR(central, ligand, count) {
-    const vValence = VALENCE_ELECTRONS[central] || 6;
-    const lContribution = 1; // Monovalent ligands
-    const totalValence = vValence + (count * lContribution);
-    const lonePairs = Math.max(0, Math.floor((vValence - count) / 2));
+    // Total valence on central atom adjusting for net charge
+    const availableValence = vValence - netCharge;
+    const lonePairs = Math.max(0, Math.floor((availableValence - count) / 2));
     const stericNumber = count + lonePairs;
 
     let geometryName = "Unknown";
     let hybridization = "sp";
     let vectors = [];
 
-    // Generate 3D Vectors for Steric Numbers 2 to 7
-    if (stericNumber === 2) { // Linear
+    if (stericNumber <= 2) {
         geometryName = "Linear"; hybridization = "sp";
         vectors = [[1.5, 0, 0], [-1.5, 0, 0]];
-    } else if (stericNumber === 3) { // Trigonal Planar
-        geometryName = "Trigonal Planar"; hybridization = "sp²";
+    } else if (stericNumber === 3) {
+        geometryName = lonePairs === 0 ? "Trigonal Planar" : "Bent";
+        hybridization = "sp²";
         vectors = [[1.5, 0, 0], [-0.75, 1.3, 0], [-0.75, -1.3, 0]];
-    } else if (stericNumber === 4) { // Tetrahedral
+    } else if (stericNumber === 4) {
         geometryName = lonePairs === 0 ? "Tetrahedral" : (lonePairs === 1 ? "Trigonal Pyramidal" : "Bent");
         hybridization = "sp³";
         vectors = [[0, 1.5, 0], [1.41, -0.5, 0], [-0.7, -0.5, 1.22], [-0.7, -0.5, -1.22]];
-    } else if (stericNumber === 5) { // Trigonal Bipyramidal
-        geometryName = lonePairs === 0 ? "Trigonal Bipyramidal" : (lonePairs === 2 ? "T-Shaped" : "Linear");
+    } else if (stericNumber === 5) {
+        geometryName = lonePairs === 0 ? "Trigonal Bipyramidal" : (lonePairs === 1 ? "Seesaw" : (lonePairs === 2 ? "T-Shaped" : "Linear"));
         hybridization = "sp³d";
         vectors = [[0, 0, 1.8], [0, 0, -1.8], [1.5, 0, 0], [-0.75, 1.3, 0], [-0.75, -1.3, 0]];
-    } else if (stericNumber === 6) { // Octahedral
-        geometryName = lonePairs === 0 ? "Octahedral" : (lonePairs === 2 ? "Square Planar" : "Square Pyramidal");
+    } else if (stericNumber === 6) {
+        geometryName = lonePairs === 0 ? "Octahedral" : (lonePairs === 1 ? "Square Pyramidal" : "Square Planar");
         hybridization = "sp³d²";
         vectors = [[1.5, 0, 0], [-1.5, 0, 0], [0, 1.5, 0], [0, -1.5, 0], [0, 0, 1.5], [0, 0, -1.5]];
-    } else if (stericNumber === 7) { // Pentagonal Bipyramidal
+    } else if (stericNumber >= 7) {
         geometryName = "Pentagonal Bipyramidal"; hybridization = "sp³d³";
         vectors = [[0, 0, 1.6], [0, 0, -1.6], [1.4, 0, 0], [0.43, 1.33, 0], [-1.13, 0.82, 0], [-1.13, -0.82, 0], [0.43, -1.33, 0]];
     }
 
-    return { bonded: count, lonePairs, stericNumber, geometryName, hybridization, vectors };
+    return { bonded: count, lonePairs, stericNumber, geometryName, hybridization, vectors, central: normCentral, ligand: normLigand };
 }
 
 function renderMolecule() {
     if (!currentMolecule || !viewer) return;
     viewer.clear();
 
-    // 1. Build XYZ Format String for 3Dmol
     const totalAtoms = 1 + currentMolecule.bonded;
     let xyzData = `${totalAtoms}\n${currentMolecule.formula}\n`;
     xyzData += `${currentMolecule.central}\t0.0\t0.0\t0.0\n`;
@@ -170,13 +223,12 @@ function renderMolecule() {
 
     viewer.addModel(xyzData, "xyz");
 
-    // 2. Apply Ball & Stick Styles
     viewer.setStyle({}, {
         stick: { radius: 0.14, colorscheme: "Jmol" },
         sphere: { scale: 0.28, colorscheme: "Jmol" }
     });
 
-    // 3. Render Lone Pair Orbitals (Isosurfaces)
+    // Render Lone Pair Orbitals
     if (showOrbitals && currentMolecule.lonePairs > 0) {
         for (let i = currentMolecule.bonded; i < currentMolecule.vectors.length; i++) {
             const v = currentMolecule.vectors[i];
@@ -184,17 +236,18 @@ function renderMolecule() {
                 center: { x: v[0] * 0.7, y: v[1] * 0.7, z: v[2] * 0.7 },
                 radius: 0.65,
                 color: "purple",
-                alpha: 0.45
+                opacity: 0.45
             });
         }
     }
 
-    // 4. Render 3D Symmetry Plane (Reflection Plane σ)
+    // Render Symmetry Plane
     if (showSymmetry) {
-        viewer.addCustom({
-            draw: [
-                { action: "Plane", center: { x: 0, y: 0, z: 0 }, normal: { x: 0, y: 0, z: 1 }, size: 3.5, color: "cyan", alpha: 0.25 }
-            ]
+        viewer.addBox({
+            center: { x: 0, y: 0, z: 0 },
+            dimensions: { w: 4.5, h: 4.5, d: 0.02 },
+            color: "cyan",
+            opacity: 0.35
         });
     }
 
@@ -203,30 +256,32 @@ function renderMolecule() {
     viewer.render();
 }
 
-// Real-time Vibrational Mode Mode Simulation
 function toggleVibrationalMode() {
+    if (vibrationInterval) clearInterval(vibrationInterval);
+
     if (isVibrating) {
         let step = 0;
         vibrationInterval = setInterval(() => {
             step += 0.2;
-            const scale = 1 + Math.sin(step) * 0.08;
-            if (viewer) {
+            const factor = Math.sin(step) * 0.12;
+            if (viewer && currentMolecule) {
                 const model = viewer.getModel();
                 if (model) {
                     const atoms = model.selectedAtoms({});
-                    atoms.forEach((atom) => {
-                        if (atom.elem !== currentMolecule.central) {
-                            atom.x *= scale;
-                            atom.y *= scale;
-                            atom.z *= scale;
+                    for (let i = 0; i < currentMolecule.bonded; i++) {
+                        const orig = currentMolecule.vectors[i];
+                        const atom = atoms[i + 1];
+                        if (atom && orig) {
+                            atom.x = orig[0] * (1 + factor);
+                            atom.y = orig[1] * (1 + factor);
+                            atom.z = orig[2] * (1 + factor);
                         }
-                    });
+                    }
                     viewer.render();
                 }
             }
         }, 50);
     } else {
-        clearInterval(vibrationInterval);
         renderMolecule();
     }
 }
