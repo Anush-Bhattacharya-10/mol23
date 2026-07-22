@@ -267,18 +267,20 @@ function renderMolecule() {
 }
 
 // Clear, Pedagogical Hybridization Diagrams
+// Clean, Formatted Hybridization Diagrams Renderer
 function renderHybridizationDiagrams() {
   if (!currentMolecule) return;
 
   document.getElementById("hybridCentralTitle").textContent = currentMolecule.central;
   document.getElementById("hybridMolTitle").textContent = currentMolecule.formula.toUpperCase();
+  document.getElementById("hybridTypeBadge").textContent = `${currentMolecule.hybridization} Hybridized`;
 
   const valence = currentMolecule.vValence;
   const steric = currentMolecule.stericNumber;
 
-  // Step 1: Ground State Explanation
+  // Step 1: Ground State
   document.getElementById("groundConfigLabel").textContent = 
-    `Central atom ${currentMolecule.central} has ${valence} valence electrons in its outer shell.`;
+    `Central atom ${currentMolecule.central} has ${valence} valence electrons in its ground shell.`;
 
   const groundBoxEl = document.getElementById("groundOrbitalBoxes");
   groundBoxEl.innerHTML = "";
@@ -294,11 +296,11 @@ function renderHybridizationDiagrams() {
   }
   pArrows.forEach((arr, idx) => groundBoxEl.appendChild(createBox(`p${['x','y','z'][idx]}`, arr)));
 
-  // Step 2: Excited State Explanation
+  // Step 2: Excited State
   document.getElementById("excitedConfigLabel").textContent = 
     valence < steric 
-      ? `Promoting unshared pairs into empty higher orbitals to create ${steric} single-electron bonding positions.` 
-      : `Rearranging valence electrons into single orbitals ready for overlap with ${currentMolecule.ligand}.`;
+      ? `Promoting electron pairs into higher orbitals to generate ${steric} bonding positions.` 
+      : `Unpairing electrons into distinct orbitals for covalent overlap.`;
 
   const excitedBoxEl = document.getElementById("excitedOrbitalBoxes");
   excitedBoxEl.innerHTML = "";
@@ -307,16 +309,53 @@ function renderHybridizationDiagrams() {
     excitedBoxEl.appendChild(createBox(`Orbital ${i+1}`, symbol));
   }
 
-  // Step 3: Hybridized State Explanation
+  // Step 3: Hybridized State
   document.getElementById("hybridTypeLabel").textContent = 
-    `Mixing 1s + p/d orbitals forms ${steric} equal ${currentMolecule.hybridization} hybrid lobes (${currentMolecule.bonded} bonding + ${currentMolecule.lonePairs} lone pair).`;
+    `Forms ${steric} equivalent ${currentMolecule.hybridization} lobes (${currentMolecule.bonded} bonding + ${currentMolecule.lonePairs} lone pairs).`;
 
   const hybridBoxEl = document.getElementById("hybridOrbitalBoxes");
   hybridBoxEl.innerHTML = "";
   for (let i = 0; i < steric; i++) {
-    const symbol = i < currentMolecule.lonePairs ? "↑↓ (Lone Pair)" : "↑ (Bonding)";
-    hybridBoxEl.appendChild(createBox(currentMolecule.hybridization, symbol, true));
+    const isLone = i < currentMolecule.lonePairs;
+    const symbol = isLone ? "↑↓" : "↑";
+    const badgeType = isLone ? "LONE PAIR" : "BONDING";
+    hybridBoxEl.appendChild(createBox(currentMolecule.hybridization, symbol, true, badgeType));
   }
+}
+
+function createBox(label, arrows, isHybrid = false, badgeType = "") {
+  const container = document.createElement("div");
+  container.className = "flex flex-col items-center gap-1.5 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 shadow-sm hover:border-slate-700 transition min-w-[70px]";
+
+  const box = document.createElement("div");
+  
+  if (arrows === "↑↓") { // Lone Pair
+    box.className = "w-10 h-10 rounded-lg bg-purple-950/80 border border-purple-600/80 flex items-center justify-center font-mono font-black text-purple-300 text-sm shadow-inner";
+  } else if (arrows === "↑") { // Single Bonding Electron
+    box.className = "w-10 h-10 rounded-lg bg-cyan-950/80 border border-cyan-500/80 flex items-center justify-center font-mono font-black text-cyan-300 text-sm shadow-inner";
+  } else { // Empty Orbital
+    box.className = "w-10 h-10 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center font-mono text-slate-600 text-xs";
+  }
+  
+  box.textContent = arrows || "—";
+
+  const lbl = document.createElement("span");
+  lbl.className = "text-[10px] font-mono text-slate-400 uppercase text-center font-semibold tracking-wide";
+  lbl.textContent = label;
+
+  container.appendChild(box);
+  container.appendChild(lbl);
+
+  if (badgeType) {
+    const typeTag = document.createElement("span");
+    typeTag.className = badgeType === "LONE PAIR" 
+      ? "text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-950 text-purple-400 border border-purple-800/60"
+      : "text-[9px] font-bold px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800/60";
+    typeTag.textContent = badgeType;
+    container.appendChild(typeTag);
+  }
+
+  return container;
 }
 
 function createBox(label, arrows, isHybrid = false) {

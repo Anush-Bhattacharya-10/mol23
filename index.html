@@ -214,49 +214,61 @@
         </div>
 
         <!-- TAB CONTENT 2: Hybridization Steps Walkthrough -->
-        <div id="viewHybridContainer" class="hidden rounded-2xl glass-panel p-6 border border-slate-700/80 shadow-2xl flex-1 flex-col gap-6">
-            <div>
-                <h3 class="text-lg font-bold text-cyan-300 flex items-center gap-2">
-                    <i class="fa-solid fa-layer-group"></i> Valence Orbital Hybridization Mechanics
-                </h3>
-                <p class="text-xs text-slate-400 mt-1">
-                    Step-by-step electronic promotion and mixing for central atom <span id="hybridCentralTitle" class="font-bold text-white">S</span> in <span id="hybridMolTitle" class="font-bold text-white">SF₆</span>.
-                </p>
-            </div>
+        <!-- TAB CONTENT 2: Hybridization Steps Walkthrough -->
+<div id="viewHybridContainer" class="hidden rounded-2xl glass-panel p-6 border border-slate-700/80 shadow-2xl flex-1 flex-col gap-6 overflow-y-auto max-h-[600px]">
+  
+  <div class="border-b border-slate-800 pb-4">
+    <div class="flex justify-between items-start">
+      <div>
+        <h3 class="text-lg font-extrabold text-cyan-300 flex items-center gap-2">
+          <i class="fa-solid fa-diagram-project"></i> Hybridization & Orbital Mechanics
+        </h3>
+        <p class="text-xs text-slate-400 mt-1">
+          Electronic promotion and orbital mixing for central atom 
+          <span id="hybridCentralTitle" class="font-bold text-cyan-400">S</span> in 
+          <span id="hybridMolTitle" class="font-bold text-white">SF₆</span>.
+        </p>
+      </div>
+      <span id="hybridTypeBadge" class="text-xs font-mono font-bold px-3 py-1 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-700">
+        sp³d² Hybridized
+      </span>
+    </div>
+  </div>
 
-            <!-- Step 1: Ground State -->
-            <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-3">
-                <div class="flex justify-between items-center">
-                    <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Step 1: Ground State Valence Configuration</span>
-                    <span id="groundConfigLabel" class="font-mono text-xs text-cyan-400 font-bold">[Ne] 3s² 3p⁴</span>
-                </div>
-                <div id="groundOrbitalBoxes" class="flex flex-wrap gap-2 pt-1">
-                    <!-- Orbital boxes populated dynamically -->
-                </div>
-            </div>
+  <!-- Step 1: Ground State -->
+  <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800 shadow-md">
+    <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700">
+        <span class="w-2 h-2 rounded-full bg-slate-400"></span> STEP 1: Ground State Valence
+      </span>
+      <span id="groundConfigLabel" class="text-xs text-slate-400 font-medium"></span>
+    </div>
+    <div id="groundOrbitalBoxes" class="flex flex-wrap gap-3 pt-2"></div>
+  </div>
 
-            <!-- Step 2: Excited State -->
-            <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-3">
-                <div class="flex justify-between items-center">
-                    <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Step 2: Excited State (Electron Promotion)</span>
-                    <span id="excitedConfigLabel" class="font-mono text-xs text-purple-400 font-bold">Unpairing electrons into d-orbitals</span>
-                </div>
-                <div id="excitedOrbitalBoxes" class="flex flex-wrap gap-2 pt-1">
-                    <!-- Orbital boxes populated dynamically -->
-                </div>
-            </div>
+  <!-- Step 2: Excited State -->
+  <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800 shadow-md">
+    <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-purple-950 text-purple-300 border border-purple-800">
+        <span class="w-2 h-2 rounded-full bg-purple-400"></span> STEP 2: Electron Promotion
+      </span>
+      <span id="excitedConfigLabel" class="text-xs text-slate-400 font-medium"></span>
+    </div>
+    <div id="excitedOrbitalBoxes" class="flex flex-wrap gap-3 pt-2"></div>
+  </div>
 
-            <!-- Step 3: Hybridized State -->
-            <div class="bg-slate-900/80 p-4 rounded-xl border border-cyan-900/50 space-y-3 bg-gradient-to-r from-cyan-950/30 to-purple-950/30">
-                <div class="flex justify-between items-center">
-                    <span class="text-xs font-bold uppercase tracking-wider text-cyan-300">Step 3: Hybridized Degenerate Lobes</span>
-                    <span id="hybridTypeLabel" class="font-mono text-xs text-cyan-300 font-bold">6 Equivalent sp³d² Hybrid Orbitals</span>
-                </div>
-                <div id="hybridOrbitalBoxes" class="flex flex-wrap gap-2 pt-1">
-                    <!-- Orbital boxes populated dynamically -->
-                </div>
-            </div>
-        </div>
+  <!-- Step 3: Hybridized State -->
+  <div class="bg-gradient-to-r from-slate-900 via-cyan-950/20 to-slate-900 p-4 rounded-xl border border-cyan-800/60 shadow-md">
+    <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-cyan-950 text-cyan-300 border border-cyan-700">
+        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span> STEP 3: Degenerate Hybrid Lobes
+      </span>
+      <span id="hybridTypeLabel" class="text-xs text-cyan-300 font-semibold"></span>
+    </div>
+    <div id="hybridOrbitalBoxes" class="flex flex-wrap gap-3 pt-2"></div>
+  </div>
+
+</div>
 
     </section>
 
