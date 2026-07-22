@@ -1,16 +1,13 @@
 let viewer = null;
-let currentStyle = "ballAndStick";
+let bondThickness = 0.14;
 let isSpinning = false;
 let currentMolecule = null;
 
 // Feature States
 let showOrbitals = false;
 let showSymmetry = false;
-let isVibrating = false;
-let vibrationInterval = null;
 
 // Periodic Table Valence Data
-// Full Valence Electrons Map for Main Group Elements
 const VALENCE_ELECTRONS = {
     H: 1, Li: 1, Na: 1, K: 1,
     Be: 2, Mg: 2, Ca: 2,
@@ -21,58 +18,6 @@ const VALENCE_ELECTRONS = {
     F: 7, Cl: 7, Br: 7, I: 7,
     He: 8, Ne: 8, Ar: 8, Kr: 8, Xe: 8, Rn: 8
 };
-
-function parseFormula(input) {
-    // Clean string: remove spaces, brackets, charges
-    let clean = input.trim();
-
-    // Handle charges if present, e.g., [NH4]+ or SO4(2-)
-    let netCharge = 0;
-    if (clean.includes("+")) netCharge = 1;
-    if (clean.includes("-")) netCharge = -1;
-    clean = clean.replace(/[^A-Za-z0-9]/g, "");
-
-    // Match all chemical tokens: Element symbol + optional count
-    const tokenRegex = /([A-Z][a-z]?)(\d*)/g;
-    const tokens = [];
-    let match;
-
-    while ((match = tokenRegex.exec(clean)) !== null) {
-        if (match[1]) {
-            tokens.push({
-                element: match[1],
-                count: match[2] ? parseInt(match[2], 10) : 1
-            });
-        }
-    }
-
-    if (tokens.length === 0) {
-        throw new Error("Invalid formula");
-    }
-
-    // Single atom input (e.g., "Xe" or "O")
-    if (tokens.length === 1) {
-        return { central: tokens[0].element, ligand: "H", count: 0, netCharge };
-    }
-
-    // For multi-atom molecules:
-    // Central atom is usually the FIRST element (e.g. SF6 -> S, PCl5 -> P, XeF4 -> Xe)
-    // Exception: In hydrogen-first formulas like H2O or H2S, the second element is central.
-    let centralIndex = 0;
-    if (tokens[0].element === "H" && tokens.length > 1) {
-        centralIndex = 1;
-    }
-
-    const centralToken = tokens[centralIndex];
-    const ligandToken = tokens[centralIndex === 0 ? 1 : 0];
-
-    return {
-        central: centralToken.element,
-        ligand: ligandToken.element,
-        count: ligandToken.count,
-        netCharge
-    };
-}
 
 document.addEventListener("DOMContentLoaded", () => {
     const element = document.getElementById("viewer");
@@ -91,7 +36,19 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    // Toggles for v2 Features
+    // Slider Event Listener
+    const slider = document.getElementById("thicknessSlider");
+    slider.addEventListener("input", (e) => {
+        bondThickness = parseFloat(e.target.value);
+        document.getElementById("thicknessVal").textContent = `${bondThickness.toFixed(2)} Å`;
+        renderMolecule();
+    });
+
+    // Tab Switching Logic
+    document.getElementById("tab3D").addEventListener("click", () => switchTab("3D"));
+    document.getElementById("tabHybrid").addEventListener("click", () => switchTab("Hybrid"));
+
+    // Toggles
     document.getElementById("toggleOrbitalsBtn").addEventListener("click", () => {
         showOrbitals = !showOrbitals;
         document.getElementById("orbitalStatus").textContent = showOrbitals ? "ON" : "OFF";
@@ -106,13 +63,6 @@ document.addEventListener("DOMContentLoaded", () => {
         renderMolecule();
     });
 
-    document.getElementById("toggleVibrationBtn").addEventListener("click", () => {
-        isVibrating = !isVibrating;
-        document.getElementById("vibrationStatus").textContent = isVibrating ? "ON" : "OFF";
-        document.getElementById("vibrationStatus").className = isVibrating ? "px-2 py-0.5 rounded text-[10px] bg-emerald-900 text-emerald-200 border border-emerald-700 font-bold" : "px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400";
-        toggleVibrationalMode();
-    });
-
     document.getElementById("recenterBtn").addEventListener("click", () => {
         if (viewer) { viewer.zoomTo(); viewer.render(); }
     });
@@ -125,9 +75,42 @@ document.addEventListener("DOMContentLoaded", () => {
         viewer.spin(isSpinning ? "y" : false, 0.8);
     });
 
-    // Load default
+    // Export High-Res PNG
+    document.getElementById("exportPngBtn").addEventListener("click", () => {
+        if (!viewer) return;
+        const imgData = viewer.png();
+        const link = document.createElement("a");
+        link.href = imgData;
+        link.download = `${currentMolecule ? currentMolecule.formula : "molecule"}_3D.png`;
+        link.click();
+    });
+
+    // Load Default
     processMolecule("SF6");
 });
+
+function switchTab(tab) {
+    const container3D = document.getElementById("view3DContainer");
+    const containerHybrid = document.getElementById("viewHybridContainer");
+    const btn3D = document.getElementById("tab3D");
+    const btnHybrid = document.getElementById("tabHybrid");
+
+    if (tab === "3D") {
+        container3D.classList.remove("hidden");
+        containerHybrid.classList.add("hidden");
+        containerHybrid.classList.remove("flex");
+
+        btn3D.className = "view-tab active flex-1 py-2 rounded-lg text-xs font-bold bg-cyan-950 text-cyan-300 border border-cyan-800/80 transition flex items-center justify-center gap-2";
+        btnHybrid.className = "view-tab flex-1 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-slate-200 border border-transparent transition flex items-center justify-center gap-2";
+    } else {
+        container3D.classList.add("hidden");
+        containerHybrid.classList.remove("hidden");
+        containerHybrid.classList.add("flex");
+
+        btnHybrid.className = "view-tab active flex-1 py-2 rounded-lg text-xs font-bold bg-cyan-950 text-cyan-300 border border-cyan-800/80 transition flex items-center justify-center gap-2";
+        btn3D.className = "view-tab flex-1 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-slate-200 border border-transparent transition flex items-center justify-center gap-2";
+    }
+}
 
 async function handleSearch() {
     const query = document.getElementById("molInput").value.trim();
@@ -137,17 +120,9 @@ async function handleSearch() {
 function processMolecule(formulaStr) {
     showLoader(true);
 
-    // Clear any existing vibration loop
-    if (vibrationInterval) {
-        clearInterval(vibrationInterval);
-        isVibrating = false;
-        document.getElementById("vibrationStatus").textContent = "OFF";
-        document.getElementById("vibrationStatus").className = "px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400";
-    }
-
     try {
         const parsed = parseFormula(formulaStr);
-        const vsepr = solveVSEPR(parsed.central, parsed.ligand, parsed.count);
+        const vsepr = solveVSEPR(parsed.central, parsed.ligand, parsed.count, parsed.netCharge);
         currentMolecule = { formula: formulaStr, ...parsed, ...vsepr };
 
         // Update HUD
@@ -157,6 +132,7 @@ function processMolecule(formulaStr) {
         document.getElementById("geomRes").textContent = vsepr.geometryName;
 
         renderMolecule();
+        renderHybridizationDiagrams();
     } catch (err) {
         document.getElementById("molName").textContent = "Parse Error";
         document.getElementById("molDetails").textContent = "Unsupported formula format. Try SF6, PCl5, XeF4, IF7, CH4, or NH3.";
@@ -165,14 +141,42 @@ function processMolecule(formulaStr) {
     }
 }
 
+function parseFormula(input) {
+    let clean = input.trim();
+    let netCharge = 0;
+    if (clean.includes("+")) netCharge = 1;
+    if (clean.includes("-")) netCharge = -1;
+    clean = clean.replace(/[^A-Za-z0-9]/g, "");
+
+    const tokenRegex = /([A-Z][a-z]?)(\d*)/g;
+    const tokens = [];
+    let match;
+
+    while ((match = tokenRegex.exec(clean)) !== null) {
+        if (match[1]) {
+            tokens.push({
+                element: match[1],
+                count: match[2] ? parseInt(match[2], 10) : 1
+            });
+        }
+    }
+
+    if (tokens.length === 0) throw new Error("Invalid formula");
+
+    let centralIndex = 0;
+    if (tokens[0].element === "H" && tokens.length > 1) centralIndex = 1;
+
+    const centralToken = tokens[centralIndex];
+    const ligandToken = tokens[centralIndex === 0 ? 1 : 0] || { element: "H", count: 0 };
+
+    return { central: centralToken.element, ligand: ligandToken.element, count: ligandToken.count, netCharge };
+}
+
 function solveVSEPR(central, ligand, count, netCharge = 0) {
-    // Normalize element symbol casing (e.g., "cl" -> "Cl")
     const normCentral = central.charAt(0).toUpperCase() + central.slice(1).toLowerCase();
     const normLigand = ligand.charAt(0).toUpperCase() + ligand.slice(1).toLowerCase();
 
     const vValence = VALENCE_ELECTRONS[normCentral] || 6;
-
-    // Total valence on central atom adjusting for net charge
     const availableValence = vValence - netCharge;
     const lonePairs = Math.max(0, Math.floor((availableValence - count) / 2));
     const stericNumber = count + lonePairs;
@@ -185,8 +189,7 @@ function solveVSEPR(central, ligand, count, netCharge = 0) {
         geometryName = "Linear"; hybridization = "sp";
         vectors = [[1.5, 0, 0], [-1.5, 0, 0]];
     } else if (stericNumber === 3) {
-        geometryName = lonePairs === 0 ? "Trigonal Planar" : "Bent";
-        hybridization = "sp²";
+        geometryName = lonePairs === 0 ? "Trigonal Planar" : "Bent"; hybridization = "sp²";
         vectors = [[1.5, 0, 0], [-0.75, 1.3, 0], [-0.75, -1.3, 0]];
     } else if (stericNumber === 4) {
         geometryName = lonePairs === 0 ? "Tetrahedral" : (lonePairs === 1 ? "Trigonal Pyramidal" : "Bent");
@@ -205,7 +208,7 @@ function solveVSEPR(central, ligand, count, netCharge = 0) {
         vectors = [[0, 0, 1.6], [0, 0, -1.6], [1.4, 0, 0], [0.43, 1.33, 0], [-1.13, 0.82, 0], [-1.13, -0.82, 0], [0.43, -1.33, 0]];
     }
 
-    return { bonded: count, lonePairs, stericNumber, geometryName, hybridization, vectors, central: normCentral, ligand: normLigand };
+    return { bonded: count, lonePairs, stericNumber, geometryName, hybridization, vectors, central: normCentral, ligand: normLigand, vValence };
 }
 
 function renderMolecule() {
@@ -224,11 +227,10 @@ function renderMolecule() {
     viewer.addModel(xyzData, "xyz");
 
     viewer.setStyle({}, {
-        stick: { radius: 0.14, colorscheme: "Jmol" },
+        stick: { radius: bondThickness, colorscheme: "Jmol" },
         sphere: { scale: 0.28, colorscheme: "Jmol" }
     });
 
-    // Render Lone Pair Orbitals
     if (showOrbitals && currentMolecule.lonePairs > 0) {
         for (let i = currentMolecule.bonded; i < currentMolecule.vectors.length; i++) {
             const v = currentMolecule.vectors[i];
@@ -241,7 +243,6 @@ function renderMolecule() {
         }
     }
 
-    // Render Symmetry Plane
     if (showSymmetry) {
         viewer.addBox({
             center: { x: 0, y: 0, z: 0 },
@@ -256,34 +257,70 @@ function renderMolecule() {
     viewer.render();
 }
 
-function toggleVibrationalMode() {
-    if (vibrationInterval) clearInterval(vibrationInterval);
+// Render Interactive Step-by-Step Orbital Boxes
+function renderHybridizationDiagrams() {
+    if (!currentMolecule) return;
 
-    if (isVibrating) {
-        let step = 0;
-        vibrationInterval = setInterval(() => {
-            step += 0.2;
-            const factor = Math.sin(step) * 0.12;
-            if (viewer && currentMolecule) {
-                const model = viewer.getModel();
-                if (model) {
-                    const atoms = model.selectedAtoms({});
-                    for (let i = 0; i < currentMolecule.bonded; i++) {
-                        const orig = currentMolecule.vectors[i];
-                        const atom = atoms[i + 1];
-                        if (atom && orig) {
-                            atom.x = orig[0] * (1 + factor);
-                            atom.y = orig[1] * (1 + factor);
-                            atom.z = orig[2] * (1 + factor);
-                        }
-                    }
-                    viewer.render();
-                }
-            }
-        }, 50);
-    } else {
-        renderMolecule();
+    document.getElementById("hybridCentralTitle").textContent = currentMolecule.central;
+    document.getElementById("hybridMolTitle").textContent = currentMolecule.formula.toUpperCase();
+
+    const valence = currentMolecule.vValence;
+    const steric = currentMolecule.stericNumber;
+
+    // Ground State Rendering
+    const groundBoxEl = document.getElementById("groundOrbitalBoxes");
+    groundBoxEl.innerHTML = "";
+
+    // Render s-orbital (2 electrons if valence >= 2)
+    const sElectrons = Math.min(2, valence);
+    groundBoxEl.appendChild(createBox("s", sElectrons === 2 ? "↑↓" : (sElectrons === 1 ? "↑" : "")));
+
+    // Render p-orbitals
+    const pValence = Math.max(0, valence - 2);
+    const pArrows = ["", "", ""];
+    for (let i = 0; i < Math.min(6, pValence); i++) {
+        const idx = i % 3;
+        pArrows[idx] = pArrows[idx] === "↑" ? "↑↓" : "↑";
     }
+    pArrows.forEach((arr) => groundBoxEl.appendChild(createBox("p", arr)));
+
+    // Step 2 & 3: Excited and Hybridized States
+    document.getElementById("hybridTypeLabel").textContent = `${steric} Equivalent ${currentMolecule.hybridization} Hybrid Orbitals`;
+
+    const excitedBoxEl = document.getElementById("excitedOrbitalBoxes");
+    const hybridBoxEl = document.getElementById("hybridOrbitalBoxes");
+    excitedBoxEl.innerHTML = "";
+    hybridBoxEl.innerHTML = "";
+
+    // Unpair all valence electrons into individual boxes for bonding
+    for (let i = 0; i < Math.max(steric, valence); i++) {
+        const symbol = i < valence ? (i < currentMolecule.lonePairs ? "↑↓" : "↑") : "";
+        excitedBoxEl.appendChild(createBox(`e${i+1}`, symbol));
+    }
+
+    for (let i = 0; i < steric; i++) {
+        const symbol = i < currentMolecule.lonePairs ? "↑↓" : "↑";
+        hybridBoxEl.appendChild(createBox(currentMolecule.hybridization, symbol, true));
+    }
+}
+
+function createBox(label, arrows, isHybrid = false) {
+    const container = document.createElement("div");
+    container.className = "flex flex-col items-center gap-1";
+
+    const box = document.createElement("div");
+    box.className = isHybrid
+        ? "orbital-box border-cyan-400 bg-cyan-950/40 text-cyan-300"
+        : "orbital-box";
+    box.textContent = arrows;
+
+    const lbl = document.createElement("span");
+    lbl.className = "text-[10px] font-mono text-slate-500 uppercase";
+    lbl.textContent = label;
+
+    container.appendChild(box);
+    container.appendChild(lbl);
+    return container;
 }
 
 function showLoader(show) {
