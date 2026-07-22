@@ -1,64 +1,17 @@
 let viewer = null;
 let currentStyle = "ballAndStick";
 let isSpinning = false;
-let currentModel = null;
+let currentMolecule = null;
 
-// Built-in VSEPR coordinate generator for hypervalent & fallback molecules
-const GEOMETRY_TEMPLATES = {
-    // Octahedral (sp3d2) - e.g., SF6
-    SF6: {
-        central: { elem: "S", x: 0.0, y: 0.0, z: 0.0 },
-        ligands: [
-            { elem: "F", x: 1.56, y: 0.0, z: 0.0 },
-            { elem: "F", x: -1.56, y: 0.0, z: 0.0 },
-            { elem: "F", x: 0.0, y: 1.56, z: 0.0 },
-            { elem: "F", x: 0.0, y: -1.56, z: 0.0 },
-            { elem: "F", x: 0.0, y: 0.0, z: 1.56 },
-            { elem: "F", x: 0.0, y: 0.0, z: -1.56 }
-        ],
-        title: "Sulfur Hexafluoride (SF₆)",
-        geometry: "Octahedral (sp³d²)",
-        weight: "146.06 g/mol"
-    },
-    // Trigonal Bipyramidal (sp3d) - e.g., PCl5
-    PCL5: {
-        central: { elem: "P", x: 0.0, y: 0.0, z: 0.0 },
-        ligands: [
-            { elem: "Cl", x: 0.0, y: 0.0, z: 2.04 },   // Axial
-            { elem: "Cl", x: 0.0, y: 0.0, z: -2.04 },  // Axial
-            { elem: "Cl", x: 2.02, y: 0.0, z: 0.0 },   // Equatorial
-            { elem: "Cl", x: -1.01, y: 1.75, z: 0.0 }, // Equatorial
-            { elem: "Cl", x: -1.01, y: -1.75, z: 0.0 } // Equatorial
-        ],
-        title: "Phosphorus Pentachloride (PCl₅)",
-        geometry: "Trigonal Bipyramidal (sp³d)",
-        weight: "208.24 g/mol"
-    },
-    // Square Planar (sp3d2) - e.g., XeF4
-    XEF4: {
-        central: { elem: "Xe", x: 0.0, y: 0.0, z: 0.0 },
-        ligands: [
-            { elem: "F", x: 1.95, y: 0.0, z: 0.0 },
-            { elem: "F", x: -1.95, y: 0.0, z: 0.0 },
-            { elem: "F", x: 0.0, y: 1.95, z: 0.0 },
-            { elem: "F", x: 0.0, y: -1.95, z: 0.0 }
-        ],
-        title: "Xenon Tetrafluoride (XeF₄)",
-        geometry: "Square Planar (sp³d²)",
-        weight: "207.29 g/mol"
-    },
-    // Trigonal Planar (sp2) - e.g., BF3
-    BF3: {
-        central: { elem: "B", x: 0.0, y: 0.0, z: 0.0 },
-        ligands: [
-            { elem: "F", x: 1.30, y: 0.0, z: 0.0 },
-            { elem: "F", x: -0.65, y: 1.13, z: 0.0 },
-            { elem: "F", x: -0.65, y: -1.13, z: 0.0 }
-        ],
-        title: "Boron Trifluoride (BF₃)",
-        geometry: "Trigonal Planar (sp²)",
-        weight: "67.81 g/mol"
-    }
+// Feature States
+let showOrbitals = false;
+let showSymmetry = false;
+let isVibrating = false;
+let vibrationInterval = null;
+
+// Periodic Table Valence Data
+const VALENCE_ELECTRONS = {
+    H: 1, F: 7, CL: 7, BR: 7, I: 7, O: 6, S: 6, SE: 6, N: 5, P: 5, AS: 5, C: 4, SI: 4, B: 3, XE: 8, KR: 8
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -74,164 +27,212 @@ document.addEventListener("DOMContentLoaded", () => {
         btn.addEventListener("click", () => {
             const mol = btn.getAttribute("data-mol");
             document.getElementById("molInput").value = mol;
-            fetchAndRenderMolecule(mol);
+            processMolecule(mol);
         });
     });
 
-    document.querySelectorAll(".style-btn").forEach((btn) => {
-        btn.addEventListener("click", (e) => {
-            document.querySelectorAll(".style-btn").forEach((b) => {
-                b.classList.remove("active", "border-cyan-500", "bg-cyan-950/60", "text-cyan-300");
-                b.classList.add("border-slate-700", "bg-slate-900/60", "text-slate-400");
-            });
+    // Toggles for v2 Features
+    document.getElementById("toggleOrbitalsBtn").addEventListener("click", () => {
+        showOrbitals = !showOrbitals;
+        document.getElementById("orbitalStatus").textContent = showOrbitals ? "ON" : "OFF";
+        document.getElementById("orbitalStatus").className = showOrbitals ? "px-2 py-0.5 rounded text-[10px] bg-purple-900 text-purple-200 border border-purple-700 font-bold" : "px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400";
+        renderMolecule();
+    });
 
-            const selected = e.currentTarget;
-            selected.classList.add("active", "border-cyan-500", "bg-cyan-950/60", "text-cyan-300");
-            selected.classList.remove("border-slate-700", "bg-slate-900/60", "text-slate-400");
+    document.getElementById("toggleSymmetryBtn").addEventListener("click", () => {
+        showSymmetry = !showSymmetry;
+        document.getElementById("symmetryStatus").textContent = showSymmetry ? "ON" : "OFF";
+        document.getElementById("symmetryStatus").className = showSymmetry ? "px-2 py-0.5 rounded text-[10px] bg-cyan-900 text-cyan-200 border border-cyan-700 font-bold" : "px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400";
+        renderMolecule();
+    });
 
-            currentStyle = selected.getAttribute("data-style");
-            applyStyle();
-        });
+    document.getElementById("toggleVibrationBtn").addEventListener("click", () => {
+        isVibrating = !isVibrating;
+        document.getElementById("vibrationStatus").textContent = isVibrating ? "ON" : "OFF";
+        document.getElementById("vibrationStatus").className = isVibrating ? "px-2 py-0.5 rounded text-[10px] bg-emerald-900 text-emerald-200 border border-emerald-700 font-bold" : "px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400";
+        toggleVibrationalMode();
     });
 
     document.getElementById("recenterBtn").addEventListener("click", () => {
-        if (viewer) {
-            viewer.zoomTo();
-            viewer.render();
-        }
+        if (viewer) { viewer.zoomTo(); viewer.render(); }
     });
 
     document.getElementById("spinToggle").addEventListener("click", () => {
         isSpinning = !isSpinning;
         const spinStateEl = document.getElementById("spinState");
-        if (isSpinning) {
-            viewer.spin("y", 0.8);
-            spinStateEl.textContent = "ON";
-            spinStateEl.className = "text-emerald-400 font-bold";
-        } else {
-            viewer.spin(false);
-            spinStateEl.textContent = "OFF";
-            spinStateEl.className = "text-cyan-400 font-bold";
-        }
+        spinStateEl.textContent = isSpinning ? "ON" : "OFF";
+        spinStateEl.className = isSpinning ? "text-emerald-400 font-bold" : "text-cyan-400 font-bold";
+        viewer.spin(isSpinning ? "y" : false, 0.8);
     });
 
-    fetchAndRenderMolecule("CH4");
+    // Load default
+    processMolecule("SF6");
 });
 
 async function handleSearch() {
     const query = document.getElementById("molInput").value.trim();
-    if (query) {
-        await fetchAndRenderMolecule(query);
-    }
+    if (query) await processMolecule(query);
 }
 
-async function fetchAndRenderMolecule(query) {
+// Universal Chemical Formula Parser & VSEPR Solver
+function processMolecule(formulaStr) {
     showLoader(true);
-    const cleanKey = query.toUpperCase().replace(/[^A-Z0-9]/g, "");
-
-    // CHECK FALLBACK VSEPR TEMPLATES FIRST FOR HYPERVALENT MOLECULES
-    if (GEOMETRY_TEMPLATES[cleanKey]) {
-        renderLocalTemplate(GEOMETRY_TEMPLATES[cleanKey]);
-        showLoader(false);
-        return;
-    }
-
-    // ELSE FETCH FROM PUBCHEM API
     try {
-        const sdfResponse = await fetch(
-            `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(query)}/SDF?record_type=3d`
-        );
+        const parsed = parseFormula(formulaStr);
+        const vsepr = solveVSEPR(parsed.central, parsed.ligand, parsed.count);
+        currentMolecule = { formula: formulaStr, ...parsed, ...vsepr };
 
-        if (!sdfResponse.ok) throw new Error("3D Conformer unavailable.");
+        // Update HUD
+        document.getElementById("molName").textContent = formulaStr.toUpperCase();
+        document.getElementById("molDetails").textContent = `AX${vsepr.bonded}E${vsepr.lonePairs} Notation • Steric No: ${vsepr.stericNumber}`;
+        document.getElementById("hybridRes").textContent = vsepr.hybridization;
+        document.getElementById("geomRes").textContent = vsepr.geometryName;
 
-        const sdfData = await sdfResponse.text();
-
-        const metaResponse = await fetch(
-            `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(query)}/property/Title,MolecularWeight/JSON`
-        );
-        let metaData = null;
-        if (metaResponse.ok) {
-            const metaJson = await metaResponse.json();
-            metaData = metaJson.PropertyTable.Properties[0];
-        }
-
-        viewer.clear();
-        currentModel = viewer.addModel(sdfData, "sdf");
-
-        applyStyle();
-        viewer.zoomTo();
-        if (isSpinning) viewer.spin("y", 0.8);
-        viewer.render();
-
-        document.getElementById("molName").textContent = metaData?.Title || query.toUpperCase();
-        document.getElementById("molDetails").textContent = `3D conformer structure loaded via PubChem.`;
-        document.getElementById("atomCount").textContent = currentModel.selectedAtoms({}).length || "--";
-        document.getElementById("molWeight").textContent = metaData?.MolecularWeight ? `${metaData.MolecularWeight} g/mol` : "--";
-        document.getElementById("sourceBadge").textContent = "PubChem 3D";
-
-    } catch (error) {
-        document.getElementById("molName").textContent = "Structure Not Found";
-        document.getElementById("molDetails").textContent = `Could not fetch 3D coordinates for "${query}". Try CH4, H2O, NH3, or hypervalent examples like SF6, PCl5, XeF4, BF3.`;
-        document.getElementById("atomCount").textContent = "--";
-        document.getElementById("molWeight").textContent = "--";
+        renderMolecule();
+    } catch (err) {
+        document.getElementById("molName").textContent = "Parse Error";
+        document.getElementById("molDetails").textContent = "Unsupported formula format. Try SF6, PCl5, XeF4, IF7, CH4, or NH3.";
     } finally {
         showLoader(false);
     }
 }
 
-// Convert JSON VSEPR Templates into XYZ format for 3Dmol.js
-function renderLocalTemplate(template) {
-    const atomCount = 1 + template.ligands.length;
-    let xyzData = `${atomCount}\n${template.title}\n`;
-    xyzData += `${template.central.elem}\t${template.central.x}\t${template.central.y}\t${template.central.z}\n`;
+function parseFormula(input) {
+    const regex = /([A-Z][a-z]?)(?:([A-Z][a-z]?))?(\d*)?/;
+    const clean = input.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
-    template.ligands.forEach((lig) => {
-        xyzData += `${lig.elem}\t${lig.x}\t${lig.y}\t${lig.z}\n`;
-    });
+    // Basic Regex match for Central + Ligand + Count
+    const matches = clean.match(/^([A-Z][a-z]?)([A-Z][a-z]?)(\d*)$/);
+    if (!matches) {
+        if (clean === "CH4") return { central: "C", ligand: "H", count: 4 };
+        if (clean === "NH3") return { central: "N", ligand: "H", count: 3 };
+        if (clean === "H2O") return { central: "O", ligand: "H", count: 2 };
+        return { central: "S", ligand: "F", count: 6 }; // Default fallback
+    }
 
-    viewer.clear();
-    currentModel = viewer.addModel(xyzData, "xyz");
-
-    applyStyle();
-    viewer.zoomTo();
-    if (isSpinning) viewer.spin("y", 0.8);
-    viewer.render();
-
-    document.getElementById("molName").textContent = template.title;
-    document.getElementById("molDetails").textContent = `Geometry: ${template.geometry}`;
-    document.getElementById("atomCount").textContent = atomCount;
-    document.getElementById("molWeight").textContent = template.weight;
-    document.getElementById("sourceBadge").textContent = "VSEPR Engine";
+    const central = matches[1];
+    const ligand = matches[2] || "H";
+    const count = parseInt(matches[3] || "1", 10);
+    return { central, ligand, count };
 }
 
-function applyStyle() {
-    if (!viewer) return;
+function solveVSEPR(central, ligand, count) {
+    const vValence = VALENCE_ELECTRONS[central] || 6;
+    const lContribution = 1; // Monovalent ligands
+    const totalValence = vValence + (count * lContribution);
+    const lonePairs = Math.max(0, Math.floor((vValence - count) / 2));
+    const stericNumber = count + lonePairs;
 
-    viewer.setStyle({}, {});
+    let geometryName = "Unknown";
+    let hybridization = "sp";
+    let vectors = [];
 
-    if (currentStyle === "ballAndStick") {
-        viewer.setStyle({}, {
-            stick: { radius: 0.14, colorscheme: "Jmol" },
-            sphere: { scale: 0.28, colorscheme: "Jmol" }
-        });
-    } else if (currentStyle === "spacefill") {
-        viewer.setStyle({}, {
-            sphere: { scale: 0.9, colorscheme: "Jmol" }
-        });
-    } else if (currentStyle === "stick") {
-        viewer.setStyle({}, {
-            stick: { radius: 0.22, colorscheme: "Jmol" }
+    // Generate 3D Vectors for Steric Numbers 2 to 7
+    if (stericNumber === 2) { // Linear
+        geometryName = "Linear"; hybridization = "sp";
+        vectors = [[1.5, 0, 0], [-1.5, 0, 0]];
+    } else if (stericNumber === 3) { // Trigonal Planar
+        geometryName = "Trigonal Planar"; hybridization = "sp²";
+        vectors = [[1.5, 0, 0], [-0.75, 1.3, 0], [-0.75, -1.3, 0]];
+    } else if (stericNumber === 4) { // Tetrahedral
+        geometryName = lonePairs === 0 ? "Tetrahedral" : (lonePairs === 1 ? "Trigonal Pyramidal" : "Bent");
+        hybridization = "sp³";
+        vectors = [[0, 1.5, 0], [1.41, -0.5, 0], [-0.7, -0.5, 1.22], [-0.7, -0.5, -1.22]];
+    } else if (stericNumber === 5) { // Trigonal Bipyramidal
+        geometryName = lonePairs === 0 ? "Trigonal Bipyramidal" : (lonePairs === 2 ? "T-Shaped" : "Linear");
+        hybridization = "sp³d";
+        vectors = [[0, 0, 1.8], [0, 0, -1.8], [1.5, 0, 0], [-0.75, 1.3, 0], [-0.75, -1.3, 0]];
+    } else if (stericNumber === 6) { // Octahedral
+        geometryName = lonePairs === 0 ? "Octahedral" : (lonePairs === 2 ? "Square Planar" : "Square Pyramidal");
+        hybridization = "sp³d²";
+        vectors = [[1.5, 0, 0], [-1.5, 0, 0], [0, 1.5, 0], [0, -1.5, 0], [0, 0, 1.5], [0, 0, -1.5]];
+    } else if (stericNumber === 7) { // Pentagonal Bipyramidal
+        geometryName = "Pentagonal Bipyramidal"; hybridization = "sp³d³";
+        vectors = [[0, 0, 1.6], [0, 0, -1.6], [1.4, 0, 0], [0.43, 1.33, 0], [-1.13, 0.82, 0], [-1.13, -0.82, 0], [0.43, -1.33, 0]];
+    }
+
+    return { bonded: count, lonePairs, stericNumber, geometryName, hybridization, vectors };
+}
+
+function renderMolecule() {
+    if (!currentMolecule || !viewer) return;
+    viewer.clear();
+
+    // 1. Build XYZ Format String for 3Dmol
+    const totalAtoms = 1 + currentMolecule.bonded;
+    let xyzData = `${totalAtoms}\n${currentMolecule.formula}\n`;
+    xyzData += `${currentMolecule.central}\t0.0\t0.0\t0.0\n`;
+
+    for (let i = 0; i < currentMolecule.bonded; i++) {
+        const v = currentMolecule.vectors[i] || [1.0, 0, 0];
+        xyzData += `${currentMolecule.ligand}\t${v[0]}\t${v[1]}\t${v[2]}\n`;
+    }
+
+    viewer.addModel(xyzData, "xyz");
+
+    // 2. Apply Ball & Stick Styles
+    viewer.setStyle({}, {
+        stick: { radius: 0.14, colorscheme: "Jmol" },
+        sphere: { scale: 0.28, colorscheme: "Jmol" }
+    });
+
+    // 3. Render Lone Pair Orbitals (Isosurfaces)
+    if (showOrbitals && currentMolecule.lonePairs > 0) {
+        for (let i = currentMolecule.bonded; i < currentMolecule.vectors.length; i++) {
+            const v = currentMolecule.vectors[i];
+            viewer.addSphere({
+                center: { x: v[0] * 0.7, y: v[1] * 0.7, z: v[2] * 0.7 },
+                radius: 0.65,
+                color: "purple",
+                alpha: 0.45
+            });
+        }
+    }
+
+    // 4. Render 3D Symmetry Plane (Reflection Plane σ)
+    if (showSymmetry) {
+        viewer.addCustom({
+            draw: [
+                { action: "Plane", center: { x: 0, y: 0, z: 0 }, normal: { x: 0, y: 0, z: 1 }, size: 3.5, color: "cyan", alpha: 0.25 }
+            ]
         });
     }
 
+    viewer.zoomTo();
+    if (isSpinning) viewer.spin("y", 0.8);
     viewer.render();
+}
+
+// Real-time Vibrational Mode Mode Simulation
+function toggleVibrationalMode() {
+    if (isVibrating) {
+        let step = 0;
+        vibrationInterval = setInterval(() => {
+            step += 0.2;
+            const scale = 1 + Math.sin(step) * 0.08;
+            if (viewer) {
+                const model = viewer.getModel();
+                if (model) {
+                    const atoms = model.selectedAtoms({});
+                    atoms.forEach((atom) => {
+                        if (atom.elem !== currentMolecule.central) {
+                            atom.x *= scale;
+                            atom.y *= scale;
+                            atom.z *= scale;
+                        }
+                    });
+                    viewer.render();
+                }
+            }
+        }, 50);
+    } else {
+        clearInterval(vibrationInterval);
+        renderMolecule();
+    }
 }
 
 function showLoader(show) {
     const loader = document.getElementById("loader");
-    if (show) {
-        loader.classList.remove("opacity-0", "pointer-events-none");
-    } else {
-        loader.classList.add("opacity-0", "pointer-events-none");
-    }
+    if (show) loader.classList.remove("opacity-0", "pointer-events-none");
+    else loader.classList.add("opacity-0", "pointer-events-none");
 }
