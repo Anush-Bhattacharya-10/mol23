@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D Molecule Geometry Viewer ⚛️</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 3Dmol.js Library -->
+    <script src="https://3dmol.org/build/3Dmol-min.js"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <style>
+        /* Custom glowing animation and dark theme tweaks */
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+        }
+        .bg-glow {
+            animation: pulseGlow 8s ease-in-out infinite;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans relative overflow-x-hidden selection:bg-cyan-500 selection:text-black">
+
+<!-- Ambient background glow elements -->
+<div class="absolute -top-32 -left-32 w-96 h-96 bg-cyan-600/20 rounded-full blur-3xl bg-glow pointer-events-none"></div>
+<div class="absolute top-1/2 -right-32 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl bg-glow pointer-events-none" style="animation-delay: 4s;"></div>
+
+<!-- Header -->
+<header class="p-5 border-b border-slate-800/80 glass-panel sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 text-white font-bold text-lg">
+                <i class="fa-solid fa-atom animate-spin" style="animation-duration: 12s;"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-extrabold bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent tracking-wide">
+                    ATOMIC<span class="text-cyan-400">3D</span>
+                </h1>
+                <p class="text-xs text-slate-400 font-medium">Molecular Geometry Engine</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-950/80 text-cyan-400 border border-cyan-800/50">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span> WebGL 3D Active
+        </span>
+        </div>
+    </div>
+</header>
+
+<!-- Main Content Layout -->
+<main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
+
+    <!-- Left Sidebar Controls (4 Cols) -->
+    <section class="lg:col-span-4 flex flex-col gap-5">
+
+        <!-- Search & Presets Card -->
+        <div class="glass-panel p-5 rounded-2xl shadow-2xl flex flex-col gap-4">
+            <label for="molInput" class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+                <i class="fa-solid fa-magnifying-glass"></i> Search Molecule
+            </label>
+
+            <div class="relative flex items-center">
+                <input
+                        type="text"
+                        id="molInput"
+                        placeholder="e.g. H2O, SF6, CH4, Ammonia..."
+                        class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-4 pr-12 py-3 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 text-sm text-white placeholder-slate-500 transition shadow-inner"
+                />
+                <button
+                        id="renderBtn"
+                        class="absolute right-1.5 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white p-2.5 rounded-lg transition shadow-md shadow-cyan-500/20 active:scale-95"
+                        title="Search"
+                >
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <!-- Quick Presets -->
+            <div>
+                <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">Quick Examples:</span>
+                <div class="flex flex-wrap gap-1.5" id="presetChips">
+                    <button data-mol="H2O" class="preset-btn px-2.5 py-1 text-xs bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 hover:border-cyan-700 border border-slate-700/60 rounded-lg text-slate-300 transition">H₂O</button>
+                    <button data-mol="CH4" class="preset-btn px-2.5 py-1 text-xs bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 hover:border-cyan-700 border border-slate-700/60 rounded-lg text-slate-300 transition">CH₄</button>
+                    <button data-mol="SF6" class="preset-btn px-2.5 py-1 text-xs bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 hover:border-cyan-700 border border-slate-700/60 rounded-lg text-slate-300 transition">SF₆</button>
+                    <button data-mol="NH3" class="preset-btn px-2.5 py-1 text-xs bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 hover:border-cyan-700 border border-slate-700/60 rounded-lg text-slate-300 transition">NH₃</button>
+                    <button data-mol="CO2" class="preset-btn px-2.5 py-1 text-xs bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 hover:border-cyan-700 border border-slate-700/60 rounded-lg text-slate-300 transition">CO₂</button>
+                    <button data-mol="PCl5" class="preset-btn px-2.5 py-1 text-xs bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 hover:border-cyan-700 border border-slate-700/60 rounded-lg text-slate-300 transition">PCl₅</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Display Options Card -->
+        <div class="glass-panel p-5 rounded-2xl shadow-2xl flex flex-col gap-4">
+            <label class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+                <i class="fa-solid fa-sliders"></i> Render Style
+            </label>
+
+            <div class="grid grid-cols-3 gap-2">
+                <button data-style="ballAndStick" class="style-btn active border border-cyan-500 bg-cyan-950/60 text-cyan-300 p-2.5 rounded-xl text-xs font-semibold flex flex-col items-center gap-1.5 transition">
+                    <i class="fa-solid fa-circle-nodes text-base"></i> Ball & Stick
+                </button>
+                <button data-style="spacefill" class="style-btn border border-slate-700 bg-slate-900/60 hover:border-slate-500 text-slate-400 p-2.5 rounded-xl text-xs font-semibold flex flex-col items-center gap-1.5 transition">
+                    <i class="fa-solid fa-globe text-base"></i> Spacefill
+                </button>
+                <button data-style="stick" class="style-btn border border-slate-700 bg-slate-900/60 hover:border-slate-500 text-slate-400 p-2.5 rounded-xl text-xs font-semibold flex flex-col items-center gap-1.5 transition">
+                    <i class="fa-solid fa-lines-leaning text-base"></i> Stick
+                </button>
+            </div>
+        </div>
+
+        <!-- Molecule Stats & Info HUD -->
+        <div class="glass-panel p-5 rounded-2xl shadow-2xl flex-1 flex flex-col justify-between border-l-2 border-l-cyan-500">
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Target Molecule</span>
+                    <span id="sourceBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">PubChem 3D</span>
+                </div>
+                <h2 id="molName" class="text-2xl font-black text-white tracking-wide mb-1">Methane</h2>
+                <p id="molDetails" class="text-xs text-slate-400 leading-relaxed">3D structural model powered by WebGL atomic coordinates.</p>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-slate-800/80 grid grid-cols-2 gap-3">
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                    <span class="text-[10px] uppercase font-bold text-slate-500 block">Atoms Count</span>
+                    <span id="atomCount" class="text-lg font-mono font-bold text-cyan-400">--</span>
+                </div>
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                    <span class="text-[10px] uppercase font-bold text-slate-500 block">Molecular Mass</span>
+                    <span id="molWeight" class="text-lg font-mono font-bold text-purple-400">--</span>
+                </div>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- Right 3D Viewport Panel (8 Cols) -->
+    <section class="lg:col-span-8 relative rounded-2xl glass-panel overflow-hidden border border-slate-700/80 shadow-2xl flex flex-col min-h-[500px] lg:min-h-full">
+
+        <!-- Top Viewport Control Bar -->
+        <div class="absolute top-4 left-4 z-20 flex items-center gap-2">
+            <button id="recenterBtn" class="bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 backdrop-blur transition shadow-lg">
+                <i class="fa-solid fa-compress"></i> Recenter
+            </button>
+            <button id="spinToggle" class="bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 backdrop-blur transition shadow-lg">
+                <i class="fa-solid fa-rotate"></i> Auto-Rotate: <span id="spinState" class="text-cyan-400 font-bold">OFF</span>
+            </button>
+        </div>
+        <!-- Loading Overlay -->
+        <div id="loader" class="absolute inset-0 z-30 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center gap-3 transition-opacity duration-300 opacity-0 pointer-events-none">
+            <div class="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin"></div>
+            <p class="text-sm font-semibold text-cyan-300 tracking-wider">FETCHING CONFORMER...</p>
+        </div>
+
+        <!-- 3Dmol Canvas Container -->
+        <!-- Inside index.html, update the viewer div: -->
+        <div id="viewer" class="w-full h-full flex-1 relative z-10 cursor-grab active:cursor-grabbing touch-none"></div>
+
+        <!-- Bottom Helper Controls Bar -->
+        <div class="p-3 bg-slate-900/90 border-t border-slate-800/80 text-xs text-slate-400 flex flex-wrap justify-between items-center gap-2 z-20">
+            <div class="flex items-center gap-4">
+                <span class="flex items-center gap-1"><i class="fa-solid fa-mouse text-cyan-400"></i> Left-click: Rotate</span>
+                <span class="flex items-center gap-1"><i class="fa-solid fa-arrows-up-down-left-right text-purple-400"></i> Right-click: Pan</span>
+                <span class="flex items-center gap-1"><i class="fa-solid fa-magnifying-glass-plus text-indigo-400"></i> Scroll: Zoom</span>
+            </div>
+            <span class="text-[11px] text-slate-500 font-mono">3Dmol.js rendering engine</span>
+        </div>
+        <!-- Mobile-Optimized Helper Bar (Bottom of Viewport) -->
+        <div class="p-3 bg-slate-900/90 border-t border-slate-800/80 text-[11px] md:text-xs text-slate-400 flex flex-wrap justify-between items-center gap-2 z-20">
+            <div class="flex items-center gap-3">
+                <span class="flex items-center gap-1"><i class="fa-solid fa-hand-pointer text-cyan-400"></i> Drag: Rotate</span>
+                <span class="flex items-center gap-1"><i class="fa-solid fa-hand-line text-purple-400"></i> 2-Finger: Pan/Zoom</span>
+            </div>
+            <span class="text-[10px] text-slate-500 font-mono hidden sm:inline">3Dmol.js</span>
+        </div>
+    </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
