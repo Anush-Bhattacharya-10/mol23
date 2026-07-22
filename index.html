@@ -1,279 +1,195 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ATOMIC3D v1.2 — Geometry & Hybridization Mechanics ⚛️</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ATOMIC3D — 3D Molecule Geometry Viewer ⚛️</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 3Dmol.js Library -->
+  <script src="https://3dmol.org/build/3Dmol-min.js"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 3Dmol.js Library -->
-    <script src="https://3dmol.org/build/3Dmol-min.js"></script>
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-
-    <style>
-        @keyframes pulseGlow {
-            0%, 100% { opacity: 0.3; transform: scale(1); }
-            50% { opacity: 0.6; transform: scale(1.05); }
-        }
-        .bg-glow { animation: pulseGlow 8s ease-in-out infinite; }
-        .glass-panel {
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-        .orbital-box {
-            width: 32px;
-            height: 36px;
-            border: 1.5px solid rgba(56, 189, 248, 0.5);
-            background: rgba(15, 23, 42, 0.9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            color: #38bdf8;
-            font-family: monospace;
-            border-radius: 6px;
-        }
-    </style>
+  <style>
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.3; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.05); }
+    }
+    .bg-glow { animation: pulseGlow 8s ease-in-out infinite; }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+  </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans relative overflow-x-hidden selection:bg-cyan-500 selection:text-black">
 
-<!-- Glow Backgrounds -->
-<div class="absolute -top-32 -left-32 w-96 h-96 bg-cyan-600/20 rounded-full blur-3xl bg-glow pointer-events-none"></div>
-<div class="absolute top-1/2 -right-32 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl bg-glow pointer-events-none" style="animation-delay: 4s;"></div>
+  <!-- Glow Backgrounds -->
+  <div class="absolute -top-32 -left-32 w-96 h-96 bg-cyan-600/20 rounded-full blur-3xl bg-glow pointer-events-none"></div>
+  <div class="absolute top-1/2 -right-32 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl bg-glow pointer-events-none" style="animation-delay: 4s;"></div>
 
-<!-- Navigation Bar -->
-<header class="p-4 border-b border-slate-800/80 glass-panel sticky top-0 z-50">
+  <!-- Header -->
+  <header class="p-4 border-b border-slate-800/80 glass-panel sticky top-0 z-50">
     <div class="max-w-7xl mx-auto flex justify-between items-center">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 text-white font-bold text-lg">
-                <i class="fa-solid fa-atom animate-spin" style="animation-duration: 12s;"></i>
-            </div>
-            <div>
-                <h1 class="text-xl font-extrabold bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent tracking-wide">
-                    ATOMIC<span class="text-cyan-400">3D</span> <span class="text-xs px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800 font-mono">v1.2.0</span>
-                </h1>
-                <p class="text-xs text-slate-400 font-medium">Universal VSEPR & Hybridization Mechanics</p>
-            </div>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 text-white font-bold text-lg">
+          <i class="fa-solid fa-atom animate-spin" style="animation-duration: 12s;"></i>
         </div>
-
-        <div class="flex items-center gap-2">
-            <button id="exportPngBtn" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 transition flex items-center gap-1.5 shadow-md">
-                <i class="fa-solid fa-camera"></i> Export PNG
-            </button>
+        <div>
+          <h1 class="text-xl font-extrabold bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent tracking-wide">
+            ATOMIC<span class="text-cyan-400">3D</span>
+          </h1>
+          <p class="text-xs text-slate-400 font-medium">Molecular Geometry & VSEPR Visualizer</p>
         </div>
+      </div>
+      
+      <div class="flex items-center gap-2">
+        <button id="exportPngBtn" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 transition flex items-center gap-1.5 shadow-md">
+          <i class="fa-solid fa-camera"></i> Export PNG
+        </button>
+      </div>
     </div>
-</header>
+  </header>
 
-<!-- Main Grid -->
-<main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
-
+  <!-- Main Grid -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
+    
     <!-- Left Sidebar (4 Cols) -->
     <section class="lg:col-span-4 flex flex-col gap-5">
-
-        <!-- Formula Input Card -->
-        <div class="glass-panel p-5 rounded-2xl shadow-2xl flex flex-col gap-4">
-            <label for="molInput" class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
-                <i class="fa-solid fa-magnifying-glass"></i> Any Chemical Formula
-            </label>
-
-            <div class="relative flex items-center">
-                <input
-                        type="text"
-                        id="molInput"
-                        placeholder="e.g. SF6, PCl5, XeF4, IF7, CH4, NH3..."
-                        class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-4 pr-12 py-3 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 text-sm text-white placeholder-slate-500 transition shadow-inner"
-                />
-                <button
-                        id="renderBtn"
-                        class="absolute right-1.5 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white p-2.5 rounded-lg transition shadow-md shadow-cyan-500/20 active:scale-95"
-                >
-                    <i class="fa-solid fa-arrow-right"></i>
-                </button>
-            </div>
-
-            <!-- Quick Presets -->
-            <div>
-                <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">Examples:</span>
-                <div class="flex flex-wrap gap-1.5">
-                    <button data-mol="SF6" class="preset-btn px-2 py-1 text-xs bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 border border-slate-700/60 rounded-lg text-slate-300 transition">SF₆</button>
-                    <button data-mol="PCl5" class="preset-btn px-2 py-1 text-xs bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 border border-slate-700/60 rounded-lg text-slate-300 transition">PCl₅</button>
-                    <button data-mol="XeF4" class="preset-btn px-2 py-1 text-xs bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 border border-slate-700/60 rounded-lg text-slate-300 transition">XeF₄</button>
-                    <button data-mol="IF7" class="preset-btn px-2 py-1 text-xs bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 border border-slate-700/60 rounded-lg text-slate-300 transition">IF₇</button>
-                    <button data-mol="CH4" class="preset-btn px-2 py-1 text-xs bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 border border-slate-700/60 rounded-lg text-slate-300 transition">CH₄</button>
-                    <button data-mol="NH3" class="preset-btn px-2 py-1 text-xs bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 border border-slate-700/60 rounded-lg text-slate-300 transition">NH₃</button>
-                </div>
-            </div>
+      
+      <!-- Input Card -->
+      <div class="glass-panel p-5 rounded-2xl shadow-2xl flex flex-col gap-4">
+        <label for="molInput" class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+          <i class="fa-solid fa-magnifying-glass"></i> Search Molecule
+        </label>
+        
+        <div class="relative flex items-center">
+          <input 
+            type="text" 
+            id="molInput" 
+            placeholder="e.g. H2O, SF6, PCl5, XeF4, CH4, NH3..." 
+            class="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-4 pr-12 py-3 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 text-sm text-white placeholder-slate-500 transition shadow-inner"
+          />
+          <button 
+            id="renderBtn" 
+            class="absolute right-1.5 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white p-2.5 rounded-lg transition shadow-md shadow-cyan-500/20 active:scale-95"
+          >
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
         </div>
 
-        <!-- NEW: Slider & Render Options Card -->
-        <div class="glass-panel p-5 rounded-2xl shadow-2xl flex flex-col gap-4">
-            <label class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
-                <i class="fa-solid fa-sliders"></i> Render Options
-            </label>
-
-            <!-- Bond Line Thickness Slider -->
-            <div>
-                <div class="flex justify-between items-center text-xs text-slate-300 mb-1.5">
-                    <span>Bond Line Thickness:</span>
-                    <span id="thicknessVal" class="font-mono font-bold text-cyan-400">0.14 Å</span>
-                </div>
-                <input
-                        type="range"
-                        id="thicknessSlider"
-                        min="0.05"
-                        max="0.40"
-                        step="0.01"
-                        value="0.14"
-                        class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
-                />
-            </div>
-
-            <!-- Toggles -->
-            <div class="space-y-2 pt-2 border-t border-slate-800">
-                <button id="toggleOrbitalsBtn" class="w-full flex justify-between items-center p-2.5 rounded-xl border border-slate-700/80 bg-slate-900/60 hover:border-slate-500 text-xs font-semibold text-slate-300 transition">
-                    <span class="flex items-center gap-2"><i class="fa-solid fa-cloud text-purple-400"></i> Lone Pair Clouds</span>
-                    <span id="orbitalStatus" class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400">OFF</span>
-                </button>
-
-                <button id="toggleSymmetryBtn" class="w-full flex justify-between items-center p-2.5 rounded-xl border border-slate-700/80 bg-slate-900/60 hover:border-slate-500 text-xs font-semibold text-slate-300 transition">
-                    <span class="flex items-center gap-2"><i class="fa-solid fa-vector-square text-cyan-400"></i> Symmetry Plane (σ)</span>
-                    <span id="symmetryStatus" class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400">OFF</span>
-                </button>
-            </div>
+        <!-- Examples -->
+        <div>
+          <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">Examples:</span>
+          <div class="flex flex-wrap gap-1.5">
+            <button data-mol="H2O" class="preset-btn px-2 py-1 text-xs bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 border border-slate-700/60 rounded-lg text-slate-300 transition">H₂O</button>
+            <button data-mol="SF6" class="preset-btn px-2 py-1 text-xs bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 border border-slate-700/60 rounded-lg text-slate-300 transition">SF₆</button>
+            <button data-mol="PCl5" class="preset-btn px-2 py-1 text-xs bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 border border-slate-700/60 rounded-lg text-slate-300 transition">PCl₅</button>
+            <button data-mol="XeF4" class="preset-btn px-2 py-1 text-xs bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 border border-slate-700/60 rounded-lg text-slate-300 transition">XeF₄</button>
+            <button data-mol="CH4" class="preset-btn px-2 py-1 text-xs bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 border border-slate-700/60 rounded-lg text-slate-300 transition">CH₄</button>
+            <button data-mol="NH3" class="preset-btn px-2 py-1 text-xs bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 border border-slate-700/60 rounded-lg text-slate-300 transition">NH₃</button>
+          </div>
         </div>
-
-        <!-- Molecular HUD -->
-        <div class="glass-panel p-5 rounded-2xl shadow-2xl flex-1 flex flex-col justify-between border-l-2 border-l-cyan-500">
-            <div>
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Molecule Specs</span>
-                    <span id="sourceBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">VSEPR Engine</span>
-                </div>
-                <h2 id="molName" class="text-2xl font-black text-white tracking-wide mb-1">SF6</h2>
-                <p id="molDetails" class="text-xs text-slate-400 leading-relaxed">AX6 Notation • Steric No: 6</p>
-            </div>
-
-            <div class="mt-4 pt-4 border-t border-slate-800/80 grid grid-cols-2 gap-2">
-                <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
-                    <span class="text-[10px] uppercase font-bold text-slate-500 block">Hybridization</span>
-                    <span id="hybridRes" class="text-sm font-mono font-bold text-cyan-400">sp³d²</span>
-                </div>
-                <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
-                    <span class="text-[10px] uppercase font-bold text-slate-500 block">Geometry</span>
-                    <span id="geomRes" class="text-sm font-mono font-bold text-purple-400">Octahedral</span>
-                </div>
-            </div>
-        </div>
-
-    </section>
-
-    <!-- Right Panel with Main Tab Switcher (8 Cols) -->
-    <section class="lg:col-span-8 flex flex-col gap-4">
-
-        <!-- Top View Switcher Tabs -->
-        <div class="flex items-center gap-2 bg-slate-900/80 p-1.5 rounded-xl border border-slate-800">
-            <button id="tab3D" class="view-tab active flex-1 py-2 rounded-lg text-xs font-bold bg-cyan-950 text-cyan-300 border border-cyan-800/80 transition flex items-center justify-center gap-2">
-                <i class="fa-solid fa-cube"></i> 3D Structure Model
-            </button>
-            <button id="tabHybrid" class="view-tab flex-1 py-2 rounded-lg text-xs font-bold text-slate-400 hover:text-slate-200 border border-transparent transition flex items-center justify-center gap-2">
-                <i class="fa-solid fa-diagram-project"></i> Hybridization Steps & Orbitals
-            </button>
-        </div>
-
-        <!-- TAB CONTENT 1: 3D Viewport -->
-        <div id="view3DContainer" class="relative rounded-2xl glass-panel overflow-hidden border border-slate-700/80 shadow-2xl flex flex-col min-h-[500px] flex-1">
-
-            <div class="absolute top-4 left-4 z-20 flex flex-wrap items-center gap-2">
-                <button id="recenterBtn" class="bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 backdrop-blur transition shadow-lg">
-                    <i class="fa-solid fa-compress"></i> Recenter
-                </button>
-                <button id="spinToggle" class="bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 backdrop-blur transition shadow-lg">
-                    <i class="fa-solid fa-rotate"></i> Rotation: <span id="spinState" class="text-cyan-400 font-bold">OFF</span>
-                </button>
-            </div>
-
-            <div id="loader" class="absolute inset-0 z-30 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center gap-3 transition-opacity duration-300 opacity-0 pointer-events-none">
-                <div class="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin"></div>
-                <p class="text-sm font-semibold text-cyan-300 tracking-wider">GENERATING VECTOR MODEL...</p>
-            </div>
-
-            <div id="viewer" class="w-full h-full flex-1 relative z-10 cursor-grab active:cursor-grabbing touch-none"></div>
-
-            <div class="p-3 bg-slate-900/90 border-t border-slate-800/80 text-xs text-slate-400 flex flex-wrap justify-between items-center gap-2 z-20">
-                <div class="flex items-center gap-4">
-                    <span class="flex items-center gap-1"><i class="fa-solid fa-mouse text-cyan-400"></i> Drag: Rotate</span>
-                    <span class="flex items-center gap-1"><i class="fa-solid fa-arrows-up-down-left-right text-purple-400"></i> Right-click: Pan</span>
-                    <span class="flex items-center gap-1"><i class="fa-solid fa-magnifying-glass-plus text-indigo-400"></i> Scroll: Zoom</span>
-                </div>
-                <span class="text-[11px] text-slate-500 font-mono">ATOMIC3D WebGL Core</span>
-            </div>
-        </div>
-
-        <!-- TAB CONTENT 2: Hybridization Steps Walkthrough -->
-        <!-- TAB CONTENT 2: Hybridization Steps Walkthrough -->
-<div id="viewHybridContainer" class="hidden rounded-2xl glass-panel p-6 border border-slate-700/80 shadow-2xl flex-1 flex-col gap-6 overflow-y-auto max-h-[600px]">
-  
-  <div class="border-b border-slate-800 pb-4">
-    <div class="flex justify-between items-start">
-      <div>
-        <h3 class="text-lg font-extrabold text-cyan-300 flex items-center gap-2">
-          <i class="fa-solid fa-diagram-project"></i> Hybridization & Orbital Mechanics
-        </h3>
-        <p class="text-xs text-slate-400 mt-1">
-          Electronic promotion and orbital mixing for central atom 
-          <span id="hybridCentralTitle" class="font-bold text-cyan-400">S</span> in 
-          <span id="hybridMolTitle" class="font-bold text-white">SF₆</span>.
-        </p>
       </div>
-      <span id="hybridTypeBadge" class="text-xs font-mono font-bold px-3 py-1 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-700">
-        sp³d² Hybridized
-      </span>
-    </div>
-  </div>
 
-  <!-- Step 1: Ground State -->
-  <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800 shadow-md">
-    <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
-      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700">
-        <span class="w-2 h-2 rounded-full bg-slate-400"></span> STEP 1: Ground State Valence
-      </span>
-      <span id="groundConfigLabel" class="text-xs text-slate-400 font-medium"></span>
-    </div>
-    <div id="groundOrbitalBoxes" class="flex flex-wrap gap-3 pt-2"></div>
-  </div>
+      <!-- Render Options -->
+      <div class="glass-panel p-5 rounded-2xl shadow-2xl flex flex-col gap-4">
+        <label class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+          <i class="fa-solid fa-sliders"></i> Render Options
+        </label>
+        
+        <!-- Bond Line Thickness Slider -->
+        <div>
+          <div class="flex justify-between items-center text-xs text-slate-300 mb-1.5">
+            <span>Bond Line Thickness:</span>
+            <span id="thicknessVal" class="font-mono font-bold text-cyan-400">0.14 Å</span>
+          </div>
+          <input 
+            type="range" 
+            id="thicknessSlider" 
+            min="0.05" 
+            max="0.40" 
+            step="0.01" 
+            value="0.14" 
+            class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+          />
+        </div>
 
-  <!-- Step 2: Excited State -->
-  <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800 shadow-md">
-    <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
-      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-purple-950 text-purple-300 border border-purple-800">
-        <span class="w-2 h-2 rounded-full bg-purple-400"></span> STEP 2: Electron Promotion
-      </span>
-      <span id="excitedConfigLabel" class="text-xs text-slate-400 font-medium"></span>
-    </div>
-    <div id="excitedOrbitalBoxes" class="flex flex-wrap gap-3 pt-2"></div>
-  </div>
+        <!-- Toggles -->
+        <div class="space-y-2 pt-2 border-t border-slate-800">
+          <button id="toggleOrbitalsBtn" class="w-full flex justify-between items-center p-2.5 rounded-xl border border-slate-700/80 bg-slate-900/60 hover:border-slate-500 text-xs font-semibold text-slate-300 transition">
+            <span class="flex items-center gap-2"><i class="fa-solid fa-cloud text-purple-400"></i> Lone Pair Clouds</span>
+            <span id="orbitalStatus" class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400">OFF</span>
+          </button>
 
-  <!-- Step 3: Hybridized State -->
-  <div class="bg-gradient-to-r from-slate-900 via-cyan-950/20 to-slate-900 p-4 rounded-xl border border-cyan-800/60 shadow-md">
-    <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
-      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-cyan-950 text-cyan-300 border border-cyan-700">
-        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span> STEP 3: Degenerate Hybrid Lobes
-      </span>
-      <span id="hybridTypeLabel" class="text-xs text-cyan-300 font-semibold"></span>
-    </div>
-    <div id="hybridOrbitalBoxes" class="flex flex-wrap gap-3 pt-2"></div>
-  </div>
+          <button id="toggleSymmetryBtn" class="w-full flex justify-between items-center p-2.5 rounded-xl border border-slate-700/80 bg-slate-900/60 hover:border-slate-500 text-xs font-semibold text-slate-300 transition">
+            <span class="flex items-center gap-2"><i class="fa-solid fa-vector-square text-cyan-400"></i> Symmetry Plane (σ)</span>
+            <span id="symmetryStatus" class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400">OFF</span>
+          </button>
+        </div>
+      </div>
 
-</div>
+      <!-- HUD Card -->
+      <div class="glass-panel p-5 rounded-2xl shadow-2xl flex-1 flex flex-col justify-between border-l-2 border-l-cyan-500">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Molecule Specs</span>
+            <span id="sourceBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">PubChem / VSEPR</span>
+          </div>
+          <h2 id="molName" class="text-2xl font-black text-white tracking-wide mb-1">Water</h2>
+          <p id="molDetails" class="text-xs text-slate-400 leading-relaxed">AX2E2 Notation • Steric No: 4</p>
+        </div>
+
+        <div class="mt-4 pt-4 border-t border-slate-800/80 grid grid-cols-2 gap-2">
+          <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+            <span class="text-[10px] uppercase font-bold text-slate-500 block">Steric Number</span>
+            <span id="hybridRes" class="text-sm font-mono font-bold text-cyan-400">4</span>
+          </div>
+          <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+            <span class="text-[10px] uppercase font-bold text-slate-500 block">Geometry</span>
+            <span id="geomRes" class="text-sm font-mono font-bold text-purple-400">Bent</span>
+          </div>
+        </div>
+      </div>
 
     </section>
 
-</main>
+    <!-- Right 3D Viewport Panel (8 Cols) -->
+    <section class="lg:col-span-8 relative rounded-2xl glass-panel overflow-hidden border border-slate-700/80 shadow-2xl flex flex-col min-h-[500px] lg:min-h-full">
+      
+      <div class="absolute top-4 left-4 z-20 flex flex-wrap items-center gap-2">
+        <button id="recenterBtn" class="bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 backdrop-blur transition shadow-lg">
+          <i class="fa-solid fa-compress"></i> Recenter
+        </button>
+        <button id="spinToggle" class="bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 backdrop-blur transition shadow-lg">
+          <i class="fa-solid fa-rotate"></i> Rotation: <span id="spinState" class="text-cyan-400 font-bold">OFF</span>
+        </button>
+      </div>
 
-<script src="app.js"></script>
+      <div id="loader" class="absolute inset-0 z-30 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center gap-3 transition-opacity duration-300 opacity-0 pointer-events-none">
+        <div class="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin"></div>
+        <p class="text-sm font-semibold text-cyan-300 tracking-wider">FETCHING 3D STRUCTURE...</p>
+      </div>
+
+      <div id="viewer" class="w-full h-full flex-1 relative z-10 cursor-grab active:cursor-grabbing touch-none"></div>
+
+      <div class="p-3 bg-slate-900/90 border-t border-slate-800/80 text-xs text-slate-400 flex flex-wrap justify-between items-center gap-2 z-20">
+        <div class="flex items-center gap-4">
+          <span class="flex items-center gap-1"><i class="fa-solid fa-mouse text-cyan-400"></i> Drag: Rotate</span>
+          <span class="flex items-center gap-1"><i class="fa-solid fa-arrows-up-down-left-right text-purple-400"></i> Right-click: Pan</span>
+          <span class="flex items-center gap-1"><i class="fa-solid fa-magnifying-glass-plus text-indigo-400"></i> Scroll: Zoom</span>
+        </div>
+        <span class="text-[11px] text-slate-500 font-mono">3Dmol.js Engine</span>
+      </div>
+
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
 </body>
 </html>
